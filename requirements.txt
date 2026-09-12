@@ -1,0 +1,9 @@
+# CPU-only PyTorch keeps installs small (used by Streamlit Community Cloud / pip users)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+sentence-transformers>=5.0
+streamlit>=1.40
+numpy
+pandas
+google-genai>=1.0
+python-dotenv

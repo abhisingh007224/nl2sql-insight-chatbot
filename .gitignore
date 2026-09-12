@@ -1,0 +1,18 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Secrets
+.env
+.streamlit/secrets.toml
+
+# Local tooling / not part of the deliverable
+.claude/
+Agenic-AI_Case_Study.pdf
