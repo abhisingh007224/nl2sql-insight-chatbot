@@ -11,5 +11,17 @@ dependencies = [
     "python-dotenv>=1.2.3",
     "sentence-transformers>=6.0.1",
     "streamlit>=1.63.0",
+    "torch>=2.14.0",
     "torchvision>=0.29.0",
 ]
+
+# CPU-only PyTorch on every platform. The default Linux wheels pull in several GB of
+# NVIDIA CUDA libraries, which Streamlit Community Cloud cannot install (and we don't need).
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+torchvision = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true

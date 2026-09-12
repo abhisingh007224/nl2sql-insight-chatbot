@@ -1,6 +1,7 @@
 # CPU-only PyTorch keeps installs small (used by Streamlit Community Cloud / pip users)
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch
+torchvision
 sentence-transformers>=5.0
 streamlit>=1.40
 numpy
