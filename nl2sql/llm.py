@@ -14,8 +14,8 @@ class LLMRateLimitError(RuntimeError):
     """Gemini quota exhausted (the free tier allows only a few requests per minute)."""
 
 
-def llm_available() -> bool:
-    return bool(gemini_api_key())
+def llm_available(api_key: str | None = None) -> bool:
+    return bool(api_key or gemini_api_key())
 
 
 @lru_cache(maxsize=2)
@@ -30,10 +30,11 @@ def _retry_delay(exc: Exception) -> float | None:
     return float(match.group(1)) if match else None
 
 
-def ask_gemini(system_prompt: str, prompt: str, attempts: int = 3) -> str:
+def ask_gemini(system_prompt: str, prompt: str, attempts: int = 3, api_key: str | None = None) -> str:
+    """`api_key` overrides the app-wide key (e.g. a visitor's own key); defaults to GEMINI_API_KEY."""
     from google.genai import errors, types
 
-    api_key = gemini_api_key()
+    api_key = api_key or gemini_api_key()
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY is not set")
     for attempt in range(attempts):
@@ -58,3 +59,20 @@ def ask_gemini(system_prompt: str, prompt: str, attempts: int = 3) -> str:
             wait = f", try again in about {round(delay)}s" if delay else ""
             raise LLMRateLimitError(f"Gemini free-tier rate limit reached{wait}") from None
     return ""
+
+
+def verify_api_key(api_key: str) -> str | None:
+    """Check a key with a cheap model-list call (no generation quota used). Returns None if valid, else a reason."""
+    from google.genai import errors
+
+    try:
+        next(iter(_client(api_key).models.list(config={"page_size": 1})), None)
+    except errors.ClientError as exc:
+        if exc.code == 429:  # authenticated fine, just rate limited
+            return None
+        if exc.code in (400, 401, 403):
+            return "the key is not valid or has no access to the Gemini API"
+        return f"Gemini returned {exc.code} {exc.status}"
+    except Exception as exc:  # network problems etc.
+        return f"could not reach Gemini ({exc.__class__.__name__})"
+    return None

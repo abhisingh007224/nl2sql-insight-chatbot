@@ -95,6 +95,7 @@ def plan_query(
     history: list[tuple[str, str]] | None = None,
     failed_sql: str | None = None,
     error: str | None = None,
+    api_key: str | None = None,
 ) -> QueryPlan:
     parts = []
     if history:
@@ -106,4 +107,5 @@ def plan_query(
     parts.append(f"User question: {question}")
     if failed_sql:
         parts.append(f"Your previous SQL failed.\nSQL:\n{failed_sql}\nError: {error}\nReply with corrected SQL in the SQL: format.")
-    return parse_plan(ask_gemini(PLANNER_PROMPT, "\n\n".join(parts)), {c.query_id for c in candidates})
+    reply = ask_gemini(PLANNER_PROMPT, "\n\n".join(parts), api_key=api_key)
+    return parse_plan(reply, {c.query_id for c in candidates})

@@ -55,6 +55,7 @@ User question ──► guardrail check ──► embed ──► cosine similar
 | [`nl2sql/pipeline.py`](nl2sql/pipeline.py) | Orchestrates guardrail → retrieve → plan → execute → answer |
 | [`build_index.py`](build_index.py) | Embedding / indexing script |
 | [`app.py`](app.py) | Streamlit chatbot UI |
+| [`api_key_manager.py`](api_key_manager.py) | Sidebar widget to paste a Gemini key at runtime (kept per browser session only) |
 | [`main.py`](main.py) | Terminal chatbot |
 | [`eval_retrieval.py`](eval_retrieval.py) | Retrieval accuracy test on 42 unseen paraphrases + out-of-scope questions |
 | [`test_guardrails.py`](test_guardrails.py) | Guardrail tests: harmful requests blocked, legitimate questions allowed, writes denied |
@@ -148,6 +149,12 @@ pip install -r requirements.txt
 
 `.env` is git-ignored. Without a key the app still runs, but answers are template-based and only vetted queries can
 be used.
+
+**Or add a key while the app is running:** open **Gemini API key** in the sidebar, paste a key and click **Save key**.
+The key is checked with a quick call that uses no generation quota, then kept **only in that browser session's memory**.
+It is passed with each of that visitor's Gemini requests and never written to environment variables, disk or logs. On
+a shared deployment every visitor runs in the same Python process, so one visitor's key is never used for anyone else. A
+visitor's own key takes priority over the app's key for their session. **Remove my key** clears it.
 
 > **Free-tier rate limit:** the Gemini free tier allows only a few requests per minute (5/min for the flash model at
 > the time of writing). A question uses 1 call (confident match) or 2 calls (planner + answer). When the limit is hit,
@@ -306,7 +313,12 @@ More questions to try: *"Which product category sells the most?"*, *"Which produ
 GEMINI_API_KEY = "your-key-here"
 ```
 
-`requirements.txt` installs CPU-only PyTorch to keep the build small.
+If you skip the secret, the app still works: visitors can paste their own Gemini key in the sidebar, and it's used only
+for their session.
+
+PyTorch is pinned to the CPU-only build (in `uv.lock`, which Streamlit Cloud installs from first, and in
+`requirements.txt`) to keep the build small. If the app ever crashes with `AttributeError ... torch.LongTensor`, the
+PyTorch install on the server was incomplete: delete the app and deploy it again to get a fresh environment.
 
 ## Configuration
 

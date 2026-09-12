@@ -7,8 +7,9 @@ import os
 
 import streamlit as st
 
+from api_key_manager import active_api_key, render_api_key_manager
 from nl2sql.answerer import compose_response
-from nl2sql.config import GEMINI_MODEL, MIN_SIMILARITY, gemini_api_key
+from nl2sql.config import MIN_SIMILARITY, gemini_api_key
 from nl2sql.pipeline import GENERATED_ID, ChatResult, NL2SQLPipeline
 
 st.set_page_config(page_title="Northwind Insight Chatbot", page_icon="📊", layout="wide")
@@ -89,10 +90,7 @@ with st.sidebar:
         "the query runs on the Northwind database, and the result is explained in natural language. "
         "If no vetted query fits, Gemini writes a new **read-only** SQL query instead."
     )
-    if gemini_api_key():
-        st.success(f"LLM: {GEMINI_MODEL}")
-    else:
-        st.warning("No GEMINI_API_KEY found - answers are template-based. See README to add a key.")
+    render_api_key_manager()
     st.caption(f"Match threshold: {MIN_SIMILARITY:.2f} cosine similarity")
 
     st.subheader("Try asking")
@@ -128,6 +126,6 @@ if question:
 
     with st.chat_message("assistant"):
         with st.spinner("Finding the right query and analysing the result..."):
-            result = pipeline.ask(question, history)
+            result = pipeline.ask(question, history, api_key=active_api_key())
         render_result(result)
     st.session_state.messages.append({"role": "assistant", "content": result})

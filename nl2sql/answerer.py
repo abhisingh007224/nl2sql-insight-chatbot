@@ -126,16 +126,20 @@ def build_prompt(question: str, record: QueryRecord, df: pd.DataFrame, history: 
 
 
 def generate_answer(
-    question: str, record: QueryRecord, df: pd.DataFrame, history: list[tuple[str, str]] | None = None
+    question: str,
+    record: QueryRecord,
+    df: pd.DataFrame,
+    history: list[tuple[str, str]] | None = None,
+    api_key: str | None = None,
 ) -> Answer:
     if df.empty:
         return Answer("The query ran successfully but returned no rows, so there is nothing to report.", "template")
 
-    if not llm_available():
-        return Answer(template_answer(record, df), "template", note="No GEMINI_API_KEY set - showing a template answer.")
+    if not llm_available(api_key):
+        return Answer(template_answer(record, df), "template", note="No Gemini API key set - showing a template answer.")
 
     try:
-        text = ask_gemini(SYSTEM_PROMPT, build_prompt(question, record, df, history or []))
+        text = ask_gemini(SYSTEM_PROMPT, build_prompt(question, record, df, history or []), api_key=api_key)
     except Exception as exc:  # network errors, quota exhaustion, invalid key...
         return Answer(template_answer(record, df), "template", note=f"Gemini unavailable ({exc}) - showing a template answer.")
     if not text:

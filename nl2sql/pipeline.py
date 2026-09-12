@@ -43,11 +43,16 @@ def _refusal(reason: str) -> Answer:
 
 
 class NL2SQLPipeline:
+    """Shared by all sessions; per-visitor state (history, API key) is passed into `ask`."""
+
     def __init__(self):
         self.repo = load_repository()
         self.retriever = Retriever(self.repo)
 
-    def ask(self, question: str, history: list[tuple[str, str]] | None = None) -> ChatResult:
+    def ask(
+        self, question: str, history: list[tuple[str, str]] | None = None, api_key: str | None = None
+    ) -> ChatResult:
+        """`api_key` overrides the app-wide Gemini key for this call only (e.g. a visitor's own key)."""
         verdict = check_question(question)
         if not verdict.allowed:
             return ChatResult(question, _refusal(verdict.reason), route="blocked")
@@ -56,47 +61,47 @@ class NL2SQLPipeline:
         best = matches[0]
 
         # Near-exact match, or no LLM available: semantic search alone decides.
-        if best.score >= CONFIDENT_MATCH or not llm_available():
+        if best.score >= CONFIDENT_MATCH or not llm_available(api_key):
             if best.score < MIN_SIMILARITY:
-                return self._decline(question, matches)
-            return self._run_vetted(question, self.repo[best.query_id], matches, history)
+                return self._decline(question, matches, api_key)
+            return self._run_vetted(question, self.repo[best.query_id], matches, history, api_key)
 
         # Otherwise Gemini checks whether a vetted candidate really answers the question, or writes new SQL.
         candidates = [self.repo[m.query_id] for m in matches if m.score >= MIN_SIMILARITY]
         try:
-            plan = plan_query(question, candidates, history)
+            plan = plan_query(question, candidates, history, api_key=api_key)
         except Exception as exc:
             if best.score >= MIN_SIMILARITY:
                 note = f"Query planner unavailable ({exc}), so the closest vetted query was used without checking that it fits."
-                return self._run_vetted(question, self.repo[best.query_id], matches, history, note=note)
-            return self._decline(question, matches, note=f"Query planner unavailable ({exc}).")
+                return self._run_vetted(question, self.repo[best.query_id], matches, history, api_key, note=note)
+            return self._decline(question, matches, api_key, note=f"Query planner unavailable ({exc}).")
 
         if plan.kind == "vetted":
-            return self._run_vetted(question, self.repo[plan.query_id], matches, history)
+            return self._run_vetted(question, self.repo[plan.query_id], matches, history, api_key)
         if plan.kind == "generated":
-            return self._run_generated(question, plan.sql, matches, history)
-        return self._decline(question, matches)
+            return self._run_generated(question, plan.sql, matches, history, api_key)
+        return self._decline(question, matches, api_key)
 
-    def _decline(self, question: str, matches: list[Match], note: str | None = None) -> ChatResult:
+    def _decline(self, question: str, matches: list[Match], api_key: str | None, note: str | None = None) -> ChatResult:
         suggestions = "\n".join(f"- {self.repo[m.query_id].sample_questions[0]}" for m in matches)
         text = f"I can't answer that from the Northwind database. Related questions I can answer:\n{suggestions}"
-        if not llm_available():
-            text += "\n\n_Add a GEMINI_API_KEY to let me write new SQL for questions outside the vetted query repository._"
+        if not llm_available(api_key):
+            text += "\n\n_Add a Gemini API key (in the sidebar) to let me write new SQL for questions outside the vetted query repository._"
         return ChatResult(question, Answer(text, "template", note=note), matches, route="declined")
 
-    def _run_vetted(self, question, record: QueryRecord, matches, history, note: str | None = None) -> ChatResult:
+    def _run_vetted(self, question, record: QueryRecord, matches, history, api_key, note: str | None = None) -> ChatResult:
         try:
             df = run_query(record.sql)
         except UnsafeSQLError as exc:
             return ChatResult(question, _refusal(str(exc)), matches, record, route="blocked")
         except Exception as exc:
             return ChatResult(question, Answer(f"Running the query failed: {exc}", "template"), matches, record, route="error")
-        answer = generate_answer(question, record, df, history)
+        answer = generate_answer(question, record, df, history, api_key=api_key)
         if note:
             answer.note = f"{note} {answer.note or ''}".strip()
         return ChatResult(question, answer, matches, record, df, route="vetted")
 
-    def _run_generated(self, question, sql: str, matches, history) -> ChatResult:
+    def _run_generated(self, question, sql: str, matches, history, api_key) -> ChatResult:
         error: Exception | None = None
         for attempt in range(2):  # one self-correction round if the generated SQL fails
             try:
@@ -108,7 +113,7 @@ class NL2SQLPipeline:
                 if attempt == 1:
                     break
                 try:
-                    plan = plan_query(question, [], history, failed_sql=sql, error=str(exc))
+                    plan = plan_query(question, [], history, failed_sql=sql, error=str(exc), api_key=api_key)
                 except Exception:
                     break
                 if plan.kind != "generated":
@@ -116,7 +121,8 @@ class NL2SQLPipeline:
                 sql = plan.sql
                 continue
             record = QueryRecord(GENERATED_ID, f"Result of an AI-generated SQL query answering: {question}", sql)
-            return ChatResult(question, generate_answer(question, record, df, history), matches, record, df, route="generated")
+            answer = generate_answer(question, record, df, history, api_key=api_key)
+            return ChatResult(question, answer, matches, record, df, route="generated")
 
         record = QueryRecord(GENERATED_ID, "AI-generated SQL that failed to run", sql)
         text = f"I wrote a SQL query for that, but it failed to run: {error}"
