@@ -1,197 +1,173 @@
 # nl2sql-insight-chatbot
 
-![Python](https://img.shields.io/badge/python-3.8%2B-blue) ![License](https://img.shields.io/badge/license-MIT-green)
+![Python Version](https://img.shields.io/badge/python-3.8%2B-brightgreen)
+![License](https://img.shields.io/badge/license-MIT-blue)
 
 ## Overview
 
-The **nl2sql-insight-chatbot** is an intelligent assistant designed to transform natural language queries into SQL commands that can be executed against a database. This Python-based chatbot utilizes advanced machine learning models and data manipulation capabilities to provide comprehensive data retrieval from a SQLite database.
+`nl2sql-insight-chatbot` is a powerful chatbot application that translates natural language queries into SQL statements, leveraging the Northwind database. It integrates advanced AI models for natural language processing and database interaction, providing insightful data retrieval through an intuitive chat interface built with Streamlit.
 
-## Features
+## Features & Functionality
 
-- Converts natural language questions to SQL queries.
-- Executes SQL queries against a SQLite database.
-- Supports embedding generation and data retrieval through modular components.
-- Leverages Google GENAI for advanced natural language understanding.
-- Easy integration and setup via environment variables.
+- **Natural Language Parsing**: Translates user queries from natural language to SQL.
+- **SQL Execution**: Directly executes generated SQL on a local SQLite database.
+- **AI Integration**: Utilizes Google GenAI services for enhanced language understanding.
+- **Embeddings and Indexing**: Enhances query accuracy and relevance.
+- **Testing Suite**: Includes tests to ensure the functionality of key modules and components.
 
 ## Technology Stack
 
 - **Programming Language**: Python 3.8+
-- **Libraries**:
-  - NumPy
-  - Pandas
-  - Google GENAI
-  - Python-dotenv for environment management
-- **Database**: SQLite (northwind.db)
+- **Libraries/Frameworks**:
+  - [Streamlit](https://streamlit.io/)
+  - [Google GenAI](https://cloud.google.com/genai)
+  - [Numpy](https://numpy.org/)
+  - [Pandas](https://pandas.pydata.org/)
+  - [Torch](https://pytorch.org/)
+- **Database**: SQLite
 
 ## Repository Structure
 
 ```
-nl2sql-insight-chatbot/
+nl2sql-insight-chatbot
 ├── .env.example
-├── .gitignore
-├── .python-version
-├── README.md
-├── api_key_manager.py
 ├── app.py
-├── build_index.py
-├── data/
-│   └── northwind.db
-├── descriptions.csv
-├── eval_retrieval.py
-├── index/
-│   ├── embeddings.npy
-│   └── index_meta.json
-├── main.py
-├── nl2sql/
-│   ├── __init__.py
+├── requirements.txt
+├── pyproject.toml
+├── nl2sql
 │   ├── answerer.py
 │   ├── config.py
-│   ├── embeddings.py
 │   ├── executor.py
 │   ├── guardrails.py
-│   ├── llm.py
-│   ├── pipeline.py
-│   ├── repository.py
-│   ├── retriever.py
-│   └── sql_generator.py
-├── pyproject.toml
-├── queries/
-│   ├── q01_total_revenue.sql
-│   ├── q02_sales_last_month.sql
-│   └── ...
-├── requirements.txt
-├── test_guardrails.py
-└── uv.lock
+│   └── pipeline.py
+├── Data/
+│   └── pre-trained models and indices...
+├── tests/
+│   └── test_guardrails.py
+└── README.md
 ```
 
 ## System Architecture & Application Workflow
 
+The architecture leverages a modular design where different components interact through a unified interface. The application processes input through a web interface, generates SQL queries, and executes them, returning results to the user.
+
 ```mermaid
 graph TD;
-    A[User Input] --> B[NLP Module];
-    B --> C[Query Generation];
-    C --> D[SQL Execution];
-    D --> E[Database (northwind.db)];
-    E --> F[Return Results];
-    F --> A;
+    A[User Input] --> B[Streamlit Interface];
+    B --> C[Query Parsing];
+    C --> D[SQL Generation];
+    D --> E[SQL Execution];
+    E --> F[Database Response];
+    F --> B;
 ```
 
 ## Installation & Setup Instructions
 
-Follow the steps below to set up and run the project:
-
-1. **Clone the repository**:
+1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/yourusername/nl2sql-insight-chatbot.git
+   git clone https://github.com/abhisingh007224/nl2sql-insight-chatbot.git
    cd nl2sql-insight-chatbot
    ```
 
-2. **Set up a Python virtual environment** (optional but recommended):
+2. **Create a Virtual Environment** (optional but recommended):
    ```bash
    python -m venv venv
-   source venv/bin/activate # On Windows use `venv\Scripts\activate`
+   source venv/bin/activate  # On Windows use `venv\Scripts\activate`
    ```
 
-3. **Install the dependencies**:
+3. **Install Dependencies**:
    ```bash
    pip install -r requirements.txt
    ```
 
-4. **Create a `.env` file**:
-   Copy `.env.example` to `.env` and fill in the required environment variables:
-   ```dotenv
-   GEMINI_API_KEY=your_api_key_here
-   ```
+4. **Set Up Environment Variables**:
+   - Copy `.env.example` to a new file named `.env`:
+     ```bash
+     cp .env.example .env
+     ```
+   - Fill in the `GEMINII_API_KEY` with your key obtained from [Google AI Studio](https://aistudio.google.com/apikey).
 
-5. **Run the application**:
+5. **Run the Application**:
    ```bash
-   python app.py
+   streamlit run app.py
    ```
 
 ## Environment/Configuration Requirements
 
-- **GEMINI_API_KEY**: Required for integration with the Google GENAI service.
-- Optional environment configurations for model versions can also be specified.
+- **Environment Variables**:
+  - `GEMINII_API_KEY`: Your API key for Google GenAI services.
+  
+  Sample `.env` Content:
+  ```plaintext
+  GEMINII_API_KEY=your-gemini-api-key-here
+  ```
 
 ## API Documentation
 
+The application processes inputs through its Streamlit interface. The primary entry point is through `app.py`, where user queries are captured and processed using the `nl2sql` module.
+
 ### Endpoints
-#### POST /query
-- **Description**: Accepts a natural language query and returns the SQL query and result.
 
-- **Request**:
-  ```json
-  {
-    "question": "What is the total revenue?"
-  }
-  ```
+- **Query Processing**: 
+  - Method: `POST`
+  - URL: `/ask`
+  - Request Body: `{ "query": "<your natural language query>" }`
+  - Response: `{ "sql": "<generated SQL>", "result": "<query result>" }`
 
-- **Response**:
-  ```json
-  {
-    "sql": "SELECT SUM(revenue) FROM sales;",
-    "result": [...]
-  }
-  ```
+## Database/Schema Information
 
-## Database Information
-
-The application uses an SQLite database named `northwind.db`. This database contains various tables relevant to sales, customers, and products.
-
-### Schema
-Basic tables include:
-- **Sales**: Contains sales transactions.
-- **Customers**: Stores customer information.
-- Additional tables available for queries in the `queries/` directory.
+The application uses the SQLite database `northwind.db`, which includes tables such as:
+- **Orders**
+- **Customers**
+- **Products**
 
 ## Important Classes, Functions, and Modules
 
-- `answerer.py`: Generates answers from queries.
-- `sql_generator.py`: Constructs SQL queries from natural language.
-- `retriever.py`: Retrieves data based on SQL queries.
+- **`app.py`**: The main application script handling user interactions.
+- **`config.py`**: Manages configuration settings and environment variables.
+- **`executor.py`**: Executes SQL queries on the database.
+- **`guardrails.py`**: Contains functionalities for input validation and error handling.
 
 ## Code Execution Flow
 
-1. The user inputs a question.
-2. The NLP module processes the input and generates a SQL query.
-3. The execution module runs the SQL command against the SQLite database.
-4. Results are returned to the user in a readable format.
+1. User inputs a query via the Streamlit interface.
+2. The input is processed and validated.
+3. The application generates the corresponding SQL using the `nl2sql` module.
+4. The SQL is executed against the SQLite database.
+5. Results are fetched and displayed back to the user.
 
 ## Testing Instructions
 
-To run the tests, execute:
+To run the tests, execute the following command:
 ```bash
-pytest test_guardrails.py
+python -m unittest discover -s tests
 ```
-You can also include additional data evaluation tests as needed.
 
 ## Deployment Instructions
 
-Deployment is manual. Ensure all dependencies are installed, and the production environment is set up correctly using the instructions above. Code can be deployed using various methods, such as through a simple Python server or cloud services.
+Currently, this application is intended for local development. To deploy in a production environment:
+1. Containerize the application using Docker (your choice) to ensure consistency.
+2. Use a cloud provider (AWS, GCP, etc.) if deploying as a service.
 
 ## Troubleshooting & Common Issues
 
-- **Missing API Key**: Ensure `GEMINI_API_KEY` is correctly set in the `.env` file.
-- **Database Connection Failed**: Verify that `northwind.db` is present in the `data/` folder.
+- Ensure all environment variables are correctly set.
+- Validate the API key and internet connection when using Google GenAI.
+- Check your SQLite schema against the expected structure if queries fail.
 
 ## Usage Examples
 
-### Example Code Snippet
 ```python
-import requests
-
-json_data = {
-    "question": "What is the total revenue?"
-}
-response = requests.post("http://localhost:5000/query", json=json_data)
+# Example of executing a query using the app interface
+query = "Show me all products sold in 1996."
+response = requests.post("http://localhost:8501/ask", json={"query": query})
 print(response.json())
 ```
 
 ## Contributing
 
-Please refer to the `CONTRIBUTING.md` for guidelines on how to contribute to this project.
+We welcome contributions! Please read our contributing guidelines (TBD) for details on how to get involved.
 
 ## License
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
